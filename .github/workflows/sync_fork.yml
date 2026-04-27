@@ -36,6 +36,7 @@ jobs:
           cat > wrangler.toml << 'EOF'
           name = "fuck"
           main = "_worker.js"
+          compatibility_date = "2025-11-04"
           [[kv_namespaces]]
           binding = "FUCK"
           id = "${{ vars.FUCK_KV_ID }}"
