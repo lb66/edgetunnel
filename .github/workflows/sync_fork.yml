@@ -1,9 +1,8 @@
 name: 'Fork Sync'
-
 on:
   schedule:
-    - cron: '20 3 * * *' # 每天北京时间上午11点20执行
-  workflow_dispatch: # 允许手动点击运行
+    - cron: '20 3 * * *'
+  workflow_dispatch:
     inputs:
       sync_test_mode:
         description: 'Use Test Mode?'
@@ -22,6 +21,7 @@ jobs:
           persist-credentials: false
 
       - name: Sync upstream changes
+        id: sync
         uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
         with:
           target_sync_branch: main
@@ -29,3 +29,26 @@ jobs:
           upstream_sync_branch: main
           upstream_sync_repo: cmliu/edgetunnel
           test_mode: ${{ inputs.sync_test_mode }}
+
+      - name: Generate wrangler.toml
+        if: (steps.sync.outputs.has_new_commits == 'true' || github.event_name == 'workflow_dispatch') && inputs.sync_test_mode != true
+        run: |
+          cat > wrangler.toml << 'EOF'
+          name = "fuck"
+          main = "_worker.js"
+          [[kv_namespaces]]
+          binding = "FUCK"
+          id = "${{ vars.FUCK_KV_ID }}"
+          [vars]
+          ADMIN = "${{ secrets.ADMIN_PASSWORD }}"
+          KEY = "${{ vars.UUID }}"
+          UUID = "${{ vars.UUID }}"
+          URL = "${{ vars.URL }}"
+          EOF
+
+      - name: Deploy to Cloudflare Workers
+        if: (steps.sync.outputs.has_new_commits == 'true' || github.event_name == 'workflow_dispatch') && inputs.sync_test_mode != true
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
